@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function Home() {
-  // --- STAVY (STATES) ---
   const [activeTab, setActiveTab] = useState('heroes')
   const [user, setUser] = useState<any>(null), [profile, setProfile] = useState<any>(null)
   const [allCharacters, setAllCharacters] = useState<any[]>([]), [history, setHistory] = useState<any[]>([])
@@ -21,11 +20,9 @@ export default function Home() {
   const xpTable = [{lvl:1,xp:0},{lvl:2,xp:550},{lvl:3,xp:1100},{lvl:4,xp:2200},{lvl:5,xp:4400},{lvl:6,xp:8500},{lvl:7,xp:15000},{lvl:8,xp:24000},{lvl:9,xp:36000},{lvl:10,xp:51000},{lvl:11,xp:69000},{lvl:12,xp:90000},{lvl:13,xp:114000},{lvl:14,xp:141000},{lvl:15,xp:170000},{lvl:16,xp:200000}];
   const getLvl = (xp: number) => ({ lvl: [...xpTable].reverse().find(l => xp >= l.xp)?.lvl || 1 });
 
-  // --- STYLY ---
   const inputBase = { height: '42px', padding: '10px', color: 'black', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' as const };
   const navBtn = (a: boolean) => ({ padding: '12px 20px', cursor: 'pointer', background: a ? '#3182ce' : 'transparent', color: 'white', border: 'none', borderBottom: a ? '3px solid #63b3ed' : 'none', fontWeight: 'bold' as const, fontSize: '13px' });
 
-  // --- LOGIKA ---
   const canSee = (t: string) => {
     const r = profile?.role || 'player';
     if (t === 'settings' || t === 'heroes') return true;
@@ -34,6 +31,8 @@ export default function Home() {
   };
 
   useEffect(() => { supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null)) }, [])
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user) { fetchProfile(); fetchChars(); fetchHistory(); fetchAnalysis(); if (canSee('admin')) fetchUsers(); } }, [user, currentPage, activeTab, gameSearchTerm, gameDateFilter])
 
   async function fetchProfile() { const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single(); if (data) { setProfile(data); setEditNickname(data.full_name); } }
@@ -68,10 +67,10 @@ export default function Home() {
     })}); return { pM, hM, pjM, count: f.length };
   })();
 
-  // --- RENDER LOGIN ---
   if (!user) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c' }}>
       <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }).then(({ error }) => error ? alert(error.message) : window.location.reload()) }} style={{ background: '#2d3748', padding: '40px 30px', borderRadius: '12px', color: 'white', width: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Želvák" style={{ width: '130px', height: '130px', objectFit: 'contain', marginBottom: '20px' }} />
         <div style={{ textAlign: 'center', marginBottom: '25px', width: '100%' }}>
             <h1 style={{ margin: 0, fontSize: '1.6em', fontWeight: 'bold' }}>Cesta Dobrodruha</h1>
@@ -104,12 +103,11 @@ export default function Home() {
       </nav>
 
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.8fr', gap: '30px' }}>
             <div>
               <section style={{ background: '#2d3748', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
-                <h3>🔍 Vyhledat hrdinu</h3>
+                <h3 style={{ marginTop: 0 }}>🔍 Vyhledat hrdinu</h3>
                 <input placeholder="Hledat jméno..." value={heroSearchTerm} onChange={e => setHeroSearchTerm(e.target.value)} style={{ ...inputBase, width: '100%' }} />
                 <div style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '10px' }}>
                   {heroSearchTerm.length > 1 && sortedHeroes.map(c => (
@@ -121,18 +119,18 @@ export default function Home() {
                 </div>
               </section>
               <section style={{ background: '#2d3748', padding: '20px', borderRadius: '10px', borderLeft: '4px solid #3182ce' }}>
-                <h3>🆕 Nový hrdina</h3>
+                <h3 style={{ marginTop: 0 }}>🆕 Nový hrdina</h3>
                 <input placeholder="Jméno hrdiny" value={newChar.name} onChange={e => setNewChar({ ...newChar, name: e.target.value })} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
                 <input placeholder="Jméno hráče" value={newChar.player} onChange={e => setNewChar({ ...newChar, player: e.target.value })} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <input placeholder="Rasa" onChange={e => setNewChar({ ...newChar, race: e.target.value })} style={{ ...inputBase, width: '100%' }} />
                   <input placeholder="Povolání" onChange={e => setNewChar({ ...newChar, class: e.target.value })} style={{ ...inputBase, width: '100%' }} />
                 </div>
-                <button onClick={() => supabase.from('characters').insert([{ name: newChar.name, player_name: newChar.player, race: newChar.race, class: newChar.class }]).then(() => { setNewChar({ name: '', race: '', class: '', player: '' }); fetchChars(); })} style={{ width: '100%', height: '40px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Vytvořit</button>
+                <button onClick={() => supabase.from('characters').insert([{ name: newChar.name, player_name: newChar.player, race: newChar.race, class: newChar.class }]).then(() => { setNewChar({ name: '', race: '', class: '', player: '' }); fetchChars(); })} style={{ width: '100%', height: '40px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Vytvořit</button>
               </section>
             </div>
             <section style={{ background: '#2d3748', padding: '20px', borderRadius: '10px' }}>
-              <h3>📝 Aktuální sezení</h3>
+              <h3 style={{ marginTop: 0 }}>📝 Dnešní výprava</h3>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <input placeholder="Název výpravy" value={sessionTitle} onChange={e => setSessionTitle(e.target.value)} style={{ ...inputBase, flex: 2 }} />
                 <input type="date" value={sessionDate} onChange={e => setSessionDate(e.target.value)} style={{ ...inputBase, flex: 1 }} />
@@ -143,7 +141,7 @@ export default function Home() {
                   <div key={c.id} style={{ padding: '15px', borderBottom: '1px solid #2d3748' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <strong>{c.name} <small style={{ color: '#a0aec0' }}>({c.race} {c.class})</small></strong>
-                      <button onClick={() => setSelectedChars(selectedChars.filter(x => x.id !== c.id))} style={{ color: '#fc8181', background: 'none', border: 'none' }}>✖</button>
+                      <button onClick={() => setSelectedChars(selectedChars.filter(x => x.id !== c.id))} style={{ color: '#fc8181', background: 'none', border: 'none', cursor: 'pointer' }}>✖</button>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input type="number" placeholder="XP" onChange={e => setSelectedChars(selectedChars.map(x => x.id === c.id ? { ...x, xp_to_add: parseInt(e.target.value) || 0 } : x))} style={{ ...inputBase, width: '70px', height: '34px' }} />
@@ -153,19 +151,18 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <button onClick={saveSession} disabled={isSubmitting} style={{ width: '100%', height: '50px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', marginTop: '15px', fontWeight: 'bold' }}>💾 ULOŽIT</button>
+              <button onClick={saveSession} disabled={isSubmitting} style={{ width: '100%', height: '50px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', marginTop: '15px', fontWeight: 'bold', cursor: 'pointer' }}>💾 ULOŽIT</button>
             </section>
           </div>
         )}
 
-        {/* HRDINOVÉ */}
         {activeTab === 'heroes' && (
           <section style={{ background: '#2d3748', padding: '25px', borderRadius: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-              <h2>🛡️ Seznam hrdinů</h2>
+              <h2 style={{ margin: 0 }}>🛡️ Seznam hrdinů</h2>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input placeholder="Hledat hrdinu..." value={heroSearchTerm} onChange={e => setHeroSearchTerm(e.target.value)} style={{ ...inputBase, width: '220px' }} />
-                <button onClick={exportHeroes} style={{ background: '#48bb78', color: 'white', border: 'none', height: '42px', padding: '0 15px', borderRadius: '4px', fontWeight: 'bold' }}>📥 CSV</button>
+                <button onClick={exportHeroes} style={{ background: '#48bb78', color: 'white', border: 'none', height: '42px', padding: '0 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📥 CSV</button>
               </div>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -191,15 +188,14 @@ export default function Home() {
           </section>
         )}
 
-        {/* KRONIKA */}
         {activeTab === 'games' && canSee('games') && (
           <section style={{ background: '#2d3748', padding: '25px', borderRadius: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-              <h2>📜 Kronika výprav</h2>
+              <h2 style={{ margin: 0 }}>📜 Kronika výprav</h2>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input placeholder="Hledat hru/PJ..." value={gameSearchTerm} onChange={e => { setGameSearchTerm(e.target.value); setCurrentPage(0); }} style={{ ...inputBase, width: '220px' }} />
                 <input type="date" value={gameDateFilter} onChange={e => { setGameDateFilter(e.target.value); setCurrentPage(0); }} style={{ ...inputBase, width: '160px' }} />
-                <button onClick={exportGames} style={{ background: '#48bb78', color: 'white', border: 'none', height: '42px', padding: '0 15px', borderRadius: '4px', fontWeight: 'bold' }}>📥 CSV</button>
+                <button onClick={exportGames} style={{ background: '#48bb78', color: 'white', border: 'none', height: '42px', padding: '0 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>📥 CSV</button>
               </div>
             </div>
             {history.map(s => (
@@ -226,13 +222,12 @@ export default function Home() {
           </section>
         )}
 
-        {/* ANALÝZY */}
         {activeTab === 'analysis' && canSee('analysis') && (
           <section>
             <div style={{ background: '#2d3748', padding: '20px', borderRadius: '10px', marginBottom: '20px', display: 'flex', gap: '20px' }}>
-              <div style={{ flex: 1 }}><label>Od:</label><input type="date" value={analysisFrom} onChange={e => setAnalysisFrom(e.target.value)} style={{ ...inputBase, width: '100%' }} /></div>
-              <div style={{ flex: 1 }}><label>Do:</label><input type="date" value={analysisTo} onChange={e => setAnalysisTo(e.target.value)} style={{ ...inputBase, width: '100%' }} /></div>
-              <div style={{ flex: 1, textAlign: 'right' }}><span>Výprav:</span><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#63b3ed' }}>{stats.count}</div></div>
+              <div style={{ flex: 1 }}><label style={{ fontSize: '12px' }}>Od:</label><input type="date" value={analysisFrom} onChange={e => setAnalysisFrom(e.target.value)} style={{ ...inputBase, width: '100%' }} /></div>
+              <div style={{ flex: 1 }}><label style={{ fontSize: '12px' }}>Do:</label><input type="date" value={analysisTo} onChange={e => setAnalysisTo(e.target.value)} style={{ ...inputBase, width: '100%' }} /></div>
+              <div style={{ flex: 1, textAlign: 'right' }}><span style={{ color: '#a0aec0' }}>Výprav:</span><div style={{ fontSize: '24px', fontWeight: 'bold', color: '#63b3ed' }}>{stats.count}</div></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div style={{ background: '#2d3748', padding: '20px', borderRadius: '10px' }}>
@@ -247,7 +242,7 @@ export default function Home() {
                 <h3>🛡️ Vypravěči</h3>
                 {Object.entries(stats.pjM).sort((a: any, b: any) => b[1] - a[1]).map(([n, c]: any) => (
                   <div key={n} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #4a5568' }}>
-                    <span><strong>{n}</strong></span><span>{c as number} her</span>
+                    <span><strong>{n}</strong></span><span>{c as number} sezení</span>
                   </div>
                 ))}
               </div>
@@ -267,7 +262,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* SPRÁVA */}
         {activeTab === 'admin' && canSee('admin') && (
           <section style={{ background: '#2d3748', padding: '25px', borderRadius: '10px' }}>
             <h2>👥 Správa uživatelů</h2>
@@ -290,22 +284,21 @@ export default function Home() {
           </section>
         )}
 
-        {/* NASTAVENÍ */}
         {activeTab === 'settings' && (
           <section style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ background: '#2d3748', padding: '25px', borderRadius: '10px', marginBottom: '20px' }}>
-              <h3>⚙️ Můj profil</h3>
-              <label>Moje přezdívka:</label>
+              <h3 style={{ marginTop: 0 }}>⚙️ Můj profil</h3>
+              <label style={{ fontSize: '12px' }}>Moje přezdívka:</label>
               <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                 <input value={editNickname} onChange={e => setEditNickname(e.target.value)} style={{ ...inputBase, width: '100%' }} />
-                <button onClick={() => supabase.from('profiles').update({ full_name: editNickname }).eq('id', user.id).then(() => { alert('Změněno!'); fetchProfile(); })} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '0 20px', borderRadius: '4px', fontWeight: 'bold' }}>Uložit</button>
+                <button onClick={() => supabase.from('profiles').update({ full_name: editNickname }).eq('id', user.id).then(() => { alert('Změněno!'); fetchProfile(); })} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '0 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Uložit</button>
               </div>
-              <p style={{ fontSize: '12px', color: '#fc8181', marginTop: '15px', background: 'rgba(252, 129, 129, 0.15)', padding: '10px', borderRadius: '6px' }}>
-                <strong>⚠️ POZOR:</strong> Změna přezdívky rozbije vazbu na tvé postavy v této sekci, dokud PJ neupraví jméno hráče u dané postavy v seznamu hrdinů.
-              </p>
+              <div style={{ fontSize: '12px', color: '#fc8181', marginTop: '15px', background: 'rgba(252, 129, 129, 0.15)', padding: '12px', borderRadius: '6px', lineHeight: '1.4' }}>
+                <strong>⚠️ POZOR:</strong> Změna přezdívky je trvalá. Pokud se tvá nová přezdívka nebude shodovat se jménem hráče u tvých postav, ztratíš na ně v této sekci vazbu, dokud je PJ nepřejmenuje.
+              </div>
             </div>
             <div style={{ background: '#2d3748', padding: '25px', borderRadius: '10px' }}>
-              <h3>🛡️ Moje postavy</h3>
+              <h3 style={{ marginTop: 0 }}>🛡️ Moje postavy</h3>
               {allCharacters.filter(c => c.player_name === profile?.full_name).map(c => (
                 <div key={c.id} style={{ padding: '15px', background: '#1a202c', marginBottom: '10px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div><strong>{c.name}</strong> <small style={{ color: '#a0aec0' }}>({c.race} {c.class})</small></div>
