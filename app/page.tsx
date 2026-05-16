@@ -30,11 +30,12 @@ export default function Home() {
   const inputBase = { height: '42px', padding: '10px', color: 'black', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' as const };
   const navBtn = (a: boolean) => ({ padding: '12px 20px', cursor: 'pointer', background: a ? '#3182ce' : 'transparent', color: 'white', border: 'none', borderBottom: a ? '3px solid #63b3ed' : 'none', fontWeight: 'bold' as const, fontSize: '13px' });
 
-  // --- LOGIKA ---
+  // --- LOGIKA PRÁV A VIDITELNOSTI ---
   const canSee = (t: string) => {
     const r = profile?.role || 'player';
     if (t === 'settings' || t === 'heroes') return true;
-    if (r === 'player') return false;
+    if (t === 'admin') return r === 'manager' || r === 'admin';
+    if (r === 'player') return false; 
     return true;
   };
 
@@ -85,7 +86,6 @@ export default function Home() {
     })}); return { pM, hM, pjM, count: f.length };
   })();
 
-  // Funkce pro klasické přihlášení
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return alert("Vyplňte e-mail i heslo.");
@@ -94,22 +94,15 @@ export default function Home() {
     else window.location.reload();
   };
 
-  // Funkce pro žádost o reset hesla (ošetřeno proti prázdnému e-mailu)
   const handleResetPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
-      alert("Prosím, zadejte platný e-mail, na který máme odkaz poslat.");
-      return;
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin, 
-    });
+    if (!email || !email.includes('@')) return alert("Prosím, zadejte platný e-mail, na který máme odkaz poslat.");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
     if (error) alert("Chyba: " + error.message);
     else alert('E-mail s odkazem na obnovu hesla byl odeslán!');
     setIsResettingPassword(false);
   };
 
-  // Funkce pro samotnou změnu hesla (krok 2)
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) return alert("Heslo musí mít alespoň 6 znaků.");
@@ -122,7 +115,7 @@ export default function Home() {
     }
   };
 
-  // --- RENDER LOGINU (Dynamicky se mění podle stavu) ---
+  // --- RENDER LOGINU ---
   if (!user || isRecoveryMode) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c' }}>
       <div style={{ background: '#2d3748', padding: '40px 30px', borderRadius: '12px', color: 'white', width: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
@@ -134,14 +127,12 @@ export default function Home() {
         </div>
 
         {isRecoveryMode ? (
-          // Formulář pro zadání NOVÉHO hesla (krok 2)
           <form onSubmit={handleUpdatePassword} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0, color: '#63b3ed' }}>Zadejte nové heslo</h3>
             <input type="password" placeholder="Nové heslo" value={newPassword} onChange={e => setNewPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
             <button type="submit" style={{ width: '100%', height: '45px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Uložit heslo</button>
           </form>
         ) : isResettingPassword ? (
-          // Formulář pro vyžádání hesla přes e-mail (krok 1)
           <form onSubmit={handleResetPasswordRequest} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0 }}>Obnova hesla</h3>
             <p style={{ fontSize: '12px', textAlign: 'center', color: '#a0aec0', marginBottom: '15px' }}>Zadejte e-mail, na který vám zašleme záchranný odkaz.</p>
@@ -150,7 +141,6 @@ export default function Home() {
             <button type="button" onClick={() => setIsResettingPassword(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zpět na přihlášení</button>
           </form>
         ) : (
-          // Standardní Login
           <form onSubmit={handleLogin} style={{ width: '100%' }}>
             <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
             <input type="password" placeholder="Heslo" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
@@ -162,7 +152,7 @@ export default function Home() {
     </div>
   )
 
-  // --- HLAVNÍ APLIKACE (Kronika, atd.) ---
+  // --- HLAVNÍ APLIKACE ---
   return (
     <div style={{ color: 'white', fontFamily: 'sans-serif', minHeight: '100vh', background: '#1a202c' }}>
       <nav style={{ background: '#2d3748', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
@@ -353,8 +343,16 @@ export default function Home() {
                     <td style={{ padding: '15px' }}><strong>{u.full_name}</strong></td>
                     <td><span style={{ fontSize: '10px', background: '#4a5568', padding: '3px 7px', borderRadius: '4px' }}>{u.role}</span></td>
                     <td>
-                      <select value={u.role} onChange={(e) => supabase.from('profiles').update({ role: e.target.value }).eq('id', u.id).then(fetchUsers)} style={{ background: '#1a202c', color: 'white', padding: '6px', borderRadius: '4px' }}>
-                        <option value="player">Hráč</option><option value="storyteller">Vypravěč</option><option value="manager">Správce</option><option value="admin">Admin</option>
+                      <select 
+                        value={u.role} 
+                        disabled={profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')}
+                        onChange={(e) => supabase.from('profiles').update({ role: e.target.value }).eq('id', u.id).then(fetchUsers)} 
+                        style={{ background: '#1a202c', color: 'white', padding: '6px', borderRadius: '4px', cursor: (profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')) ? 'not-allowed' : 'pointer' }}
+                      >
+                        <option value="player">Hráč</option>
+                        <option value="storyteller">Vypravěč</option>
+                        {profile?.role === 'admin' && <option value="manager">Správce</option>}
+                        {profile?.role === 'admin' && <option value="admin">Admin</option>}
                       </select>
                     </td>
                   </tr>
