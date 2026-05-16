@@ -20,6 +20,9 @@ export default function Home() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [newPassword, setNewPassword] = useState('')
+  
+  // Nový stav pro moderní notifikace místo alert()
+  const [toast, setToast] = useState({ message: '', type: 'success' })
 
   const xpTable = [{lvl:1,xp:0},{lvl:2,xp:550},{lvl:3,xp:1100},{lvl:4,xp:2200},{lvl:5,xp:4400},{lvl:6,xp:8500},{lvl:7,xp:15000},{lvl:8,xp:24000},{lvl:9,xp:36000},{lvl:10,xp:51000},{lvl:11,xp:69000},{lvl:12,xp:90000},{lvl:13,xp:114000},{lvl:14,xp:141000},{lvl:15,xp:170000},{lvl:16,xp:200000}];
   const getLvl = (xp: number) => ({ lvl: [...xpTable].reverse().find(l => xp >= l.xp)?.lvl || 1 });
@@ -27,10 +30,17 @@ export default function Home() {
   const inputBase = { height: '42px', padding: '10px', color: 'black', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' as const };
   const navBtn = (a: boolean) => ({ padding: '12px 20px', cursor: 'pointer', background: a ? '#3182ce' : 'transparent', color: 'white', border: 'none', borderBottom: a ? '3px solid #63b3ed' : 'none', fontWeight: 'bold' as const, fontSize: '13px' });
 
+  // Funkce pro zobrazení notifikace
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast({ message: '', type: 'success' }), 3000);
+  };
+
   const canSee = (t: string) => {
     const r = profile?.role || 'player';
     if (t === 'settings' || t === 'heroes') return true;
-    if (t === 'admin') return r === 'manager' || r === 'admin';
+    // Správu A Analýzy vidí jen Správce a Admin
+    if (t === 'admin' || t === 'analysis') return r === 'manager' || r === 'admin';
     if (r === 'player') return false; 
     return true;
   };
@@ -53,12 +63,12 @@ export default function Home() {
   async function fetchAnalysis() { const { data } = await supabase.from('sessions').select('*, xp_logs(*, characters(*))'); setAllSessionsForAnalysis(data || []); }
 
   const saveSession = async () => {
-    if (!sessionTitle || selectedChars.length === 0) return alert('Doplňte název výpravy!');
+    if (!sessionTitle || selectedChars.length === 0) return showToast('Doplňte název výpravy a vyberte hrdiny!', 'error');
     setIsSubmitting(true);
     const { data: s, error } = await supabase.from('sessions').insert([{ title: sessionTitle, date: sessionDate, start_time: sessionTime, dm_id: user.id, pj_name: profile.full_name }]).select().single();
-    if (error) { alert("Chyba DB: " + error.message); setIsSubmitting(false); return; }
+    if (error) { showToast("Chyba DB: " + error.message, 'error'); setIsSubmitting(false); return; }
     await supabase.from('xp_logs').insert(selectedChars.map(c => ({ character_id: c.id, session_id: s.id, xp_gained: c.xp_to_add || 0, loot: c.loot_to_add || '', notes: c.notes_to_add || '', created_by: user.id })));
-    alert('Uloženo!'); setSelectedChars([]); setSessionTitle(''); fetchChars(); fetchHistory(); setIsSubmitting(false);
+    showToast('Výprava úspěšně uložena!', 'success'); setSelectedChars([]); setSessionTitle(''); fetchChars(); fetchHistory(); setIsSubmitting(false);
   }
 
   const downloadCSV = (csv: string, name: string) => { const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", name); link.click(); };
@@ -80,35 +90,43 @@ export default function Home() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return alert("Vyplňte e-mail i heslo.");
+    if (!email || !password) return showToast("Vyplňte e-mail i heslo.", 'error');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
+    if (error) showToast("Chyba přihlášení: " + error.message, 'error');
     else window.location.reload();
   };
 
   const handleResetPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) return alert("Prosím, zadejte platný e-mail, na který máme odkaz poslat.");
+    if (!email || !email.includes('@')) return showToast("Prosím, zadejte platný e-mail.", 'error');
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-    if (error) alert("Chyba: " + error.message);
-    else alert('E-mail s odkazem na obnovu hesla byl odeslán!');
+    if (error) showToast("Chyba: " + error.message, 'error');
+    else showToast('E-mail s odkazem byl odeslán!', 'success');
     setIsResettingPassword(false);
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) return alert("Heslo musí mít alespoň 6 znaků.");
+    if (newPassword.length < 6) return showToast("Heslo musí mít alespoň 6 znaků.", 'error');
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) alert("Chyba při změně hesla: " + error.message);
+    if (error) showToast("Chyba při změně hesla: " + error.message, 'error');
     else {
-      alert('Heslo bylo úspěšně změněno! Nyní jste přihlášeni.');
+      showToast('Heslo bylo úspěšně změněno!', 'success');
       setIsRecoveryMode(false);
       setNewPassword('');
     }
   };
 
   if (!user || isRecoveryMode) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c', position: 'relative' }}>
+      
+      {/* Toast notifikace pro přihlašovací obrazovku */}
+      {toast.message && (
+        <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', background: toast.type === 'error' ? '#fc8181' : '#48bb78', color: 'white', padding: '15px 30px', borderRadius: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 1000, transition: 'all 0.3s' }}>
+          {toast.message}
+        </div>
+      )}
+
       <div style={{ background: '#2d3748', padding: '40px 30px', borderRadius: '12px', color: 'white', width: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Želvák" style={{ width: '130px', height: '130px', objectFit: 'contain', marginBottom: '20px' }} />
@@ -144,7 +162,15 @@ export default function Home() {
   )
 
   return (
-    <div style={{ color: 'white', fontFamily: 'sans-serif', minHeight: '100vh', background: '#1a202c' }}>
+    <div style={{ color: 'white', fontFamily: 'sans-serif', minHeight: '100vh', background: '#1a202c', position: 'relative' }}>
+      
+      {/* Globální Toast Notifikace v aplikaci */}
+      {toast.message && (
+        <div style={{ position: 'fixed', bottom: '30px', right: '30px', background: toast.type === 'error' ? '#fc8181' : '#48bb78', color: 'white', padding: '15px 30px', borderRadius: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 1000, transition: 'all 0.3s' }}>
+          {toast.message}
+        </div>
+      )}
+
       <nav style={{ background: '#2d3748', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
         <div style={{ display: 'flex' }}>
           {canSee('dashboard') && <button onClick={() => setActiveTab('dashboard')} style={navBtn(activeTab === 'dashboard')}>ZÁZNAM</button>}
@@ -186,7 +212,7 @@ export default function Home() {
                   <input placeholder="Rasa" onChange={e => setNewChar({ ...newChar, race: e.target.value })} style={{ ...inputBase, width: '100%' }} />
                   <input placeholder="Povolání" onChange={e => setNewChar({ ...newChar, class: e.target.value })} style={{ ...inputBase, width: '100%' }} />
                 </div>
-                <button onClick={() => supabase.from('characters').insert([{ name: newChar.name, player_name: newChar.player, race: newChar.race, class: newChar.class }]).then(() => { setNewChar({ name: '', race: '', class: '', player: '' }); fetchChars(); })} style={{ width: '100%', height: '40px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Vytvořit</button>
+                <button onClick={() => supabase.from('characters').insert([{ name: newChar.name, player_name: newChar.player, race: newChar.race, class: newChar.class }]).then(() => { showToast('Hrdina vytvořen!', 'success'); setNewChar({ name: '', race: '', class: '', player: '' }); fetchChars(); })} style={{ width: '100%', height: '40px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Vytvořit</button>
               </section>
             </div>
             <section style={{ background: '#2d3748', padding: '20px', borderRadius: '10px' }}>
@@ -340,9 +366,9 @@ export default function Home() {
                           const newRole = e.target.value;
                           const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
                           if (error) {
-                            alert("Chyba při ukládání: " + error.message);
+                            showToast("Chyba při ukládání: " + error.message, 'error');
                           } else {
-                            alert("Role úspěšně změněna!");
+                            showToast("Role úspěšně změněna!", 'success');
                             fetchUsers();
                           }
                         }}
@@ -350,8 +376,9 @@ export default function Home() {
                       >
                         <option value="player">Hráč</option>
                         <option value="storyteller">Vypravěč</option>
-                        {profile?.role === 'admin' && <option value="manager">Správce</option>}
-                        {profile?.role === 'admin' && <option value="admin">Admin</option>}
+                        {/* Správci se volba 'manager' ukáže, pokud ji u daného člověka už vidí, adminovi vždy */}
+                        {(profile?.role === 'admin' || u.role === 'manager') && <option value="manager">Správce</option>}
+                        {(profile?.role === 'admin' || u.role === 'admin') && <option value="admin">Admin</option>}
                       </select>
                     </td>
                   </tr>
@@ -368,7 +395,7 @@ export default function Home() {
               <label style={{ fontSize: '12px' }}>Moje přezdívka:</label>
               <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                 <input value={editNickname} onChange={e => setEditNickname(e.target.value)} style={{ ...inputBase, width: '100%' }} />
-                <button onClick={() => supabase.from('profiles').update({ full_name: editNickname }).eq('id', user.id).then(() => { alert('Změněno!'); fetchProfile(); })} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '0 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Uložit</button>
+                <button onClick={() => supabase.from('profiles').update({ full_name: editNickname }).eq('id', user.id).then(() => { showToast('Profil úspěšně upraven!', 'success'); fetchProfile(); })} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '0 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Uložit</button>
               </div>
               <div style={{ fontSize: '12px', color: '#fc8181', marginTop: '15px', background: 'rgba(252, 129, 129, 0.15)', padding: '12px', borderRadius: '6px', lineHeight: '1.4' }}>
                 <strong>⚠️ POZOR:</strong> Změna přezdívky je trvalá. Pokud se tvá nová přezdívka nebude shodovat se jménem hráče u tvých postav, ztratíš na ně v této sekci vazbu, dokud je PJ nepřejmenuje.
