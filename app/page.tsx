@@ -20,8 +20,6 @@ export default function Home() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [newPassword, setNewPassword] = useState('')
-  
-  // Nový stav pro moderní notifikace místo alert()
   const [toast, setToast] = useState({ message: '', type: 'success' })
 
   const xpTable = [{lvl:1,xp:0},{lvl:2,xp:550},{lvl:3,xp:1100},{lvl:4,xp:2200},{lvl:5,xp:4400},{lvl:6,xp:8500},{lvl:7,xp:15000},{lvl:8,xp:24000},{lvl:9,xp:36000},{lvl:10,xp:51000},{lvl:11,xp:69000},{lvl:12,xp:90000},{lvl:13,xp:114000},{lvl:14,xp:141000},{lvl:15,xp:170000},{lvl:16,xp:200000}];
@@ -30,7 +28,6 @@ export default function Home() {
   const inputBase = { height: '42px', padding: '10px', color: 'black', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' as const };
   const navBtn = (a: boolean) => ({ padding: '12px 20px', cursor: 'pointer', background: a ? '#3182ce' : 'transparent', color: 'white', border: 'none', borderBottom: a ? '3px solid #63b3ed' : 'none', fontWeight: 'bold' as const, fontSize: '13px' });
 
-  // Funkce pro zobrazení notifikace
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast({ message: '', type: 'success' }), 3000);
@@ -39,7 +36,6 @@ export default function Home() {
   const canSee = (t: string) => {
     const r = profile?.role || 'player';
     if (t === 'settings' || t === 'heroes') return true;
-    // Správu A Analýzy vidí jen Správce a Admin
     if (t === 'admin' || t === 'analysis') return r === 'manager' || r === 'admin';
     if (r === 'player') return false; 
     return true;
@@ -119,14 +115,11 @@ export default function Home() {
 
   if (!user || isRecoveryMode) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c', position: 'relative' }}>
-      
-      {/* Toast notifikace pro přihlašovací obrazovku */}
       {toast.message && (
         <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', background: toast.type === 'error' ? '#fc8181' : '#48bb78', color: 'white', padding: '15px 30px', borderRadius: '8px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', zIndex: 1000, transition: 'all 0.3s' }}>
           {toast.message}
         </div>
       )}
-
       <div style={{ background: '#2d3748', padding: '40px 30px', borderRadius: '12px', color: 'white', width: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Želvák" style={{ width: '130px', height: '130px', objectFit: 'contain', marginBottom: '20px' }} />
@@ -134,7 +127,6 @@ export default function Home() {
             <h1 style={{ margin: 0, fontSize: '1.6em', fontWeight: 'bold' }}>Cesta Dobrodruha</h1>
             <h2 style={{ margin: '5px 0 0 0', fontSize: '1.3em', color: '#f6ad55', fontWeight: 'normal' }}>U Želváka</h2>
         </div>
-
         {isRecoveryMode ? (
           <form onSubmit={handleUpdatePassword} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0, color: '#63b3ed' }}>Zadejte nové heslo</h3>
@@ -354,35 +346,47 @@ export default function Home() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
               <thead><tr style={{ textAlign: 'left', color: '#a0aec0' }}><th>Uživatel</th><th>Role</th><th>Akce</th></tr></thead>
               <tbody>
-                {allUsers.map(u => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid #4a5568' }}>
-                    <td style={{ padding: '15px' }}><strong>{u.full_name}</strong></td>
-                    <td><span style={{ fontSize: '10px', background: '#4a5568', padding: '3px 7px', borderRadius: '4px' }}>{u.role}</span></td>
-                    <td>
-                      <select 
-                        value={u.role} 
-                        disabled={profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')}
-                        onChange={async (e) => {
-                          const newRole = e.target.value;
-                          const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
-                          if (error) {
-                            showToast("Chyba při ukládání: " + error.message, 'error');
-                          } else {
-                            showToast("Role úspěšně změněna!", 'success');
-                            fetchUsers();
-                          }
-                        }}
-                        style={{ background: '#1a202c', color: 'white', padding: '6px', borderRadius: '4px', cursor: (profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')) ? 'not-allowed' : 'pointer' }}
-                      >
-                        <option value="player">Hráč</option>
-                        <option value="storyteller">Vypravěč</option>
-                        {/* Správci se volba 'manager' ukáže, pokud ji u daného člověka už vidí, adminovi vždy */}
-                        {(profile?.role === 'admin' || u.role === 'manager') && <option value="manager">Správce</option>}
-                        {(profile?.role === 'admin' || u.role === 'admin') && <option value="admin">Admin</option>}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+                {allUsers.map(u => {
+                  // Bezpečnostní pojistky:
+                  const isSelf = u.id === profile?.id; // 1. Můj vlastní řádek
+                  const isTargetAdmin = u.role === 'admin'; // 2. Řádek patří Adminovi
+                  const isTargetManager = u.role === 'manager'; // 3. Řádek patří Správci
+                  const isMeAdmin = profile?.role === 'admin'; // 4. Já jsem Admin
+
+                  // Roletka se zamkne pokud to jsem já, pokud upravuju admina, nebo pokud nejsem admin a snažím se upravit jiného správce
+                  const isDisabled = isSelf || isTargetAdmin || (!isMeAdmin && isTargetManager);
+
+                  return (
+                    <tr key={u.id} style={{ borderBottom: '1px solid #4a5568' }}>
+                      <td style={{ padding: '15px' }}><strong>{u.full_name}</strong></td>
+                      <td><span style={{ fontSize: '10px', background: '#4a5568', padding: '3px 7px', borderRadius: '4px' }}>{u.role}</span></td>
+                      <td>
+                        <select 
+                          value={u.role} 
+                          disabled={isDisabled}
+                          onChange={async (e) => {
+                            const newRole = e.target.value;
+                            const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
+                            if (error) {
+                              showToast("Chyba při ukládání: " + error.message, 'error');
+                            } else {
+                              showToast("Role úspěšně změněna!", 'success');
+                              fetchUsers();
+                            }
+                          }}
+                          style={{ background: '#1a202c', color: 'white', padding: '6px', borderRadius: '4px', cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                        >
+                          <option value="player">Hráč</option>
+                          <option value="storyteller">Vypravěč</option>
+                          {/* Správce jde vidět a přiřadit, jen pokud k tomu mám práva */}
+                          {(isMeAdmin || isTargetManager) && <option value="manager">Správce</option>}
+                          {/* Admin jde jen vidět (aby se vypsal), ale nikdo ho nesmí v menu vybrat k přiřazení */}
+                          {isTargetAdmin && <option value="admin">Admin</option>}
+                        </select>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </section>
