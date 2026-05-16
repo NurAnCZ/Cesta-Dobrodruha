@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function Home() {
-  // --- STAVY (STATES) ---
   const [activeTab, setActiveTab] = useState('heroes')
   const [user, setUser] = useState<any>(null), [profile, setProfile] = useState<any>(null)
   const [allCharacters, setAllCharacters] = useState<any[]>([]), [history, setHistory] = useState<any[]>([])
@@ -18,7 +17,6 @@ export default function Home() {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' }), [email, setEmail] = useState(''), [password, setPassword] = useState('')
   const [newChar, setNewChar] = useState({ name: '', race: '', class: '', player: '' })
 
-  // Stavy pro obnovu hesla
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -26,11 +24,9 @@ export default function Home() {
   const xpTable = [{lvl:1,xp:0},{lvl:2,xp:550},{lvl:3,xp:1100},{lvl:4,xp:2200},{lvl:5,xp:4400},{lvl:6,xp:8500},{lvl:7,xp:15000},{lvl:8,xp:24000},{lvl:9,xp:36000},{lvl:10,xp:51000},{lvl:11,xp:69000},{lvl:12,xp:90000},{lvl:13,xp:114000},{lvl:14,xp:141000},{lvl:15,xp:170000},{lvl:16,xp:200000}];
   const getLvl = (xp: number) => ({ lvl: [...xpTable].reverse().find(l => xp >= l.xp)?.lvl || 1 });
 
-  // --- STYLY ---
   const inputBase = { height: '42px', padding: '10px', color: 'black', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' as const };
   const navBtn = (a: boolean) => ({ padding: '12px 20px', cursor: 'pointer', background: a ? '#3182ce' : 'transparent', color: 'white', border: 'none', borderBottom: a ? '3px solid #63b3ed' : 'none', fontWeight: 'bold' as const, fontSize: '13px' });
 
-  // --- LOGIKA PRÁV A VIDITELNOSTI ---
   const canSee = (t: string) => {
     const r = profile?.role || 'player';
     if (t === 'settings' || t === 'heroes') return true;
@@ -41,12 +37,8 @@ export default function Home() {
 
   useEffect(() => { 
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null)) 
-    
-    // Posluchač pro návrat z e-mailu po kliknutí na reset hesla
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecoveryMode(true);
-      }
+      if (event === 'PASSWORD_RECOVERY') setIsRecoveryMode(true);
     });
     return () => { authListener.subscription.unsubscribe(); };
   }, [])
@@ -115,7 +107,6 @@ export default function Home() {
     }
   };
 
-  // --- RENDER LOGINU ---
   if (!user || isRecoveryMode) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c' }}>
       <div style={{ background: '#2d3748', padding: '40px 30px', borderRadius: '12px', color: 'white', width: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
@@ -152,7 +143,6 @@ export default function Home() {
     </div>
   )
 
-  // --- HLAVNÍ APLIKACE ---
   return (
     <div style={{ color: 'white', fontFamily: 'sans-serif', minHeight: '100vh', background: '#1a202c' }}>
       <nav style={{ background: '#2d3748', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
@@ -346,7 +336,16 @@ export default function Home() {
                       <select 
                         value={u.role} 
                         disabled={profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')}
-                        onChange={(e) => supabase.from('profiles').update({ role: e.target.value }).eq('id', u.id).then(fetchUsers)} 
+                        onChange={async (e) => {
+                          const newRole = e.target.value;
+                          const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
+                          if (error) {
+                            alert("Chyba při ukládání: " + error.message);
+                          } else {
+                            alert("Role úspěšně změněna!");
+                            fetchUsers();
+                          }
+                        }}
                         style={{ background: '#1a202c', color: 'white', padding: '6px', borderRadius: '4px', cursor: (profile?.role !== 'admin' && (u.role === 'admin' || u.role === 'manager')) ? 'not-allowed' : 'pointer' }}
                       >
                         <option value="player">Hráč</option>
