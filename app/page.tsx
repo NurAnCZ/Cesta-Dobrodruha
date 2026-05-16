@@ -19,6 +19,7 @@ export default function Home() {
 
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(false) // Nový stav pro zobrazení registrace
   const [newPassword, setNewPassword] = useState('')
   const [toast, setToast] = useState({ message: '', type: 'success' })
 
@@ -92,6 +93,20 @@ export default function Home() {
     else window.location.reload();
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return showToast("Vyplňte e-mail i heslo.", 'error');
+    if (password.length < 6) return showToast("Heslo musí mít alespoň 6 znaků.", 'error');
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) showToast("Chyba registrace: " + error.message, 'error');
+    else {
+      showToast("Registrace proběhla úspěšně!", 'success');
+      // Pokud nevyžaduješ potvrzení e-mailu v Supabase, rovnou ho to přihlásí
+      if (data.session) window.location.reload();
+      else setIsSignUp(false); 
+    }
+  };
+
   const handleResetPasswordRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) return showToast("Prosím, zadejte platný e-mail.", 'error');
@@ -113,6 +128,7 @@ export default function Home() {
     }
   };
 
+  // --- RENDER LOGINU ---
   if (!user || isRecoveryMode) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a202c', position: 'relative' }}>
       {toast.message && (
@@ -127,6 +143,7 @@ export default function Home() {
             <h1 style={{ margin: 0, fontSize: '1.6em', fontWeight: 'bold' }}>Cesta Dobrodruha</h1>
             <h2 style={{ margin: '5px 0 0 0', fontSize: '1.3em', color: '#f6ad55', fontWeight: 'normal' }}>U Želváka</h2>
         </div>
+        
         {isRecoveryMode ? (
           <form onSubmit={handleUpdatePassword} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0, color: '#63b3ed' }}>Zadejte nové heslo</h3>
@@ -141,12 +158,23 @@ export default function Home() {
             <button type="submit" style={{ width: '100%', height: '45px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>Odeslat odkaz do e-mailu</button>
             <button type="button" onClick={() => setIsResettingPassword(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zpět na přihlášení</button>
           </form>
+        ) : isSignUp ? (
+          <form onSubmit={handleRegister} style={{ width: '100%' }}>
+            <h3 style={{ textAlign: 'center', marginTop: 0, color: '#48bb78' }}>Nová registrace</h3>
+            <input placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
+            <input type="password" placeholder="Heslo (min. 6 znaků)" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
+            <button type="submit" style={{ width: '100%', height: '45px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>ZAREGISTROVAT SE</button>
+            <button type="button" onClick={() => setIsSignUp(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zpět na přihlášení</button>
+          </form>
         ) : (
           <form onSubmit={handleLogin} style={{ width: '100%' }}>
-            <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
+            <input placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
             <input type="password" placeholder="Heslo" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
-            <button type="submit" style={{ width: '100%', height: '45px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>VSTOUPIT</button>
-            <button type="button" onClick={() => { setIsResettingPassword(true); setPassword(''); }} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zapomněli jste heslo?</button>
+            <button type="submit" style={{ width: '100%', height: '45px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>VSTOUPIT</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+              <button type="button" onClick={() => { setIsSignUp(true); setPassword(''); }} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Založit nový účet</button>
+              <button type="button" onClick={() => { setIsResettingPassword(true); setPassword(''); }} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zapomenuté heslo?</button>
+            </div>
           </form>
         )}
       </div>
@@ -347,13 +375,10 @@ export default function Home() {
               <thead><tr style={{ textAlign: 'left', color: '#a0aec0' }}><th>Uživatel</th><th>Role</th><th>Akce</th></tr></thead>
               <tbody>
                 {allUsers.map(u => {
-                  // Bezpečnostní pojistky:
-                  const isSelf = u.id === profile?.id; // 1. Můj vlastní řádek
-                  const isTargetAdmin = u.role === 'admin'; // 2. Řádek patří Adminovi
-                  const isTargetManager = u.role === 'manager'; // 3. Řádek patří Správci
-                  const isMeAdmin = profile?.role === 'admin'; // 4. Já jsem Admin
-
-                  // Roletka se zamkne pokud to jsem já, pokud upravuju admina, nebo pokud nejsem admin a snažím se upravit jiného správce
+                  const isSelf = u.id === profile?.id;
+                  const isTargetAdmin = u.role === 'admin';
+                  const isTargetManager = u.role === 'manager';
+                  const isMeAdmin = profile?.role === 'admin';
                   const isDisabled = isSelf || isTargetAdmin || (!isMeAdmin && isTargetManager);
 
                   return (
@@ -378,9 +403,7 @@ export default function Home() {
                         >
                           <option value="player">Hráč</option>
                           <option value="storyteller">Vypravěč</option>
-                          {/* Správce jde vidět a přiřadit, jen pokud k tomu mám práva */}
                           {(isMeAdmin || isTargetManager) && <option value="manager">Správce</option>}
-                          {/* Admin jde jen vidět (aby se vypsal), ale nikdo ho nesmí v menu vybrat k přiřazení */}
                           {isTargetAdmin && <option value="admin">Admin</option>}
                         </select>
                       </td>
