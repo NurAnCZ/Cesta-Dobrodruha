@@ -19,8 +19,9 @@ export default function Home() {
 
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false) // Nový stav pro zobrazení registrace
+  const [isSignUp, setIsSignUp] = useState(false) 
   const [newPassword, setNewPassword] = useState('')
+  const [registerNickname, setRegisterNickname] = useState('') // Nový stav pro přezdívku při registraci
   const [toast, setToast] = useState({ message: '', type: 'success' })
 
   const xpTable = [{lvl:1,xp:0},{lvl:2,xp:550},{lvl:3,xp:1100},{lvl:4,xp:2200},{lvl:5,xp:4400},{lvl:6,xp:8500},{lvl:7,xp:15000},{lvl:8,xp:24000},{lvl:9,xp:36000},{lvl:10,xp:51000},{lvl:11,xp:69000},{lvl:12,xp:90000},{lvl:13,xp:114000},{lvl:14,xp:141000},{lvl:15,xp:170000},{lvl:16,xp:200000}];
@@ -95,13 +96,17 @@ export default function Home() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return showToast("Vyplňte e-mail i heslo.", 'error');
+    if (!email || !password || !registerNickname) return showToast("Vyplňte e-mail, heslo i přezdívku.", 'error');
     if (password.length < 6) return showToast("Heslo musí mít alespoň 6 znaků.", 'error');
+    
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) showToast("Chyba registrace: " + error.message, 'error');
     else {
+      // Okamžitě po úspěšné registraci updatneme jméno v tabulce profiles na zadanou přezdívku
+      if (data.user) {
+        await supabase.from('profiles').update({ full_name: registerNickname }).eq('id', data.user.id);
+      }
       showToast("Registrace proběhla úspěšně!", 'success');
-      // Pokud nevyžaduješ potvrzení e-mailu v Supabase, rovnou ho to přihlásí
       if (data.session) window.location.reload();
       else setIsSignUp(false); 
     }
@@ -162,6 +167,8 @@ export default function Home() {
           <form onSubmit={handleRegister} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0, color: '#48bb78' }}>Nová registrace</h3>
             <input placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
+            {/* Nové políčko pro zadání přezdívky */}
+            <input placeholder="Tvoje přezdívka ve hře" value={registerNickname} onChange={e => setRegisterNickname(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
             <input type="password" placeholder="Heslo (min. 6 znaků)" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
             <button type="submit" style={{ width: '100%', height: '45px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>ZAREGISTROVAT SE</button>
             <button type="button" onClick={() => setIsSignUp(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zpět na přihlášení</button>
@@ -172,7 +179,7 @@ export default function Home() {
             <input type="password" placeholder="Heslo" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
             <button type="submit" style={{ width: '100%', height: '45px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>VSTOUPIT</button>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-              <button type="button" onClick={() => { setIsSignUp(true); setPassword(''); }} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Založit nový účet</button>
+              <button type="button" onClick={() => { setIsSignUp(true); setPassword(''); setRegisterNickname(''); }} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Založit nový účet</button>
               <button type="button" onClick={() => { setIsResettingPassword(true); setPassword(''); }} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zapomenuté heslo?</button>
             </div>
           </form>
