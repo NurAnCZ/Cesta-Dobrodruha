@@ -18,7 +18,7 @@ export default function Home() {
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' }), [email, setEmail] = useState(''), [password, setPassword] = useState('')
   const [newChar, setNewChar] = useState({ name: '', race: '', class: '', player: '' })
 
-  // Nové stavy pro obnovu hesla
+  // Stavy pro obnovu hesla
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -85,20 +85,34 @@ export default function Home() {
     })}); return { pM, hM, pjM, count: f.length };
   })();
 
-  // Funkce pro žádost o reset hesla
-  const handleResetPasswordRequest = async (e: any) => {
+  // Funkce pro klasické přihlášení
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return alert("Vyplňte e-mail i heslo.");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else window.location.reload();
+  };
+
+  // Funkce pro žádost o reset hesla (ošetřeno proti prázdnému e-mailu)
+  const handleResetPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !email.includes('@')) {
+      alert("Prosím, zadejte platný e-mail, na který máme odkaz poslat.");
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin, // Pošle uživatele z e-mailu zpět na tvůj web
+      redirectTo: window.location.origin, 
     });
     if (error) alert("Chyba: " + error.message);
     else alert('E-mail s odkazem na obnovu hesla byl odeslán!');
     setIsResettingPassword(false);
   };
 
-  // Funkce pro samotnou změnu hesla (po kliknutí na odkaz z e-mailu)
-  const handleUpdatePassword = async (e: any) => {
+  // Funkce pro samotnou změnu hesla (krok 2)
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPassword.length < 6) return alert("Heslo musí mít alespoň 6 znaků.");
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) alert("Chyba při změně hesla: " + error.message);
     else {
@@ -130,25 +144,25 @@ export default function Home() {
           // Formulář pro vyžádání hesla přes e-mail (krok 1)
           <form onSubmit={handleResetPasswordRequest} style={{ width: '100%' }}>
             <h3 style={{ textAlign: 'center', marginTop: 0 }}>Obnova hesla</h3>
-            <p style={{ fontSize: '12px', textAlign: 'center', color: '#a0aec0', marginBottom: '15px' }}>Zadejte svůj e-mail a my vám pošleme odkaz pro resetování hesla.</p>
-            <input placeholder="Váš email" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
-            <button type="submit" style={{ width: '100%', height: '45px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>Odeslat odkaz</button>
+            <p style={{ fontSize: '12px', textAlign: 'center', color: '#a0aec0', marginBottom: '15px' }}>Zadejte e-mail, na který vám zašleme záchranný odkaz.</p>
+            <input placeholder="Váš e-mail" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
+            <button type="submit" style={{ width: '100%', height: '45px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}>Odeslat odkaz do e-mailu</button>
             <button type="button" onClick={() => setIsResettingPassword(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zpět na přihlášení</button>
           </form>
         ) : (
           // Standardní Login
-          <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }).then(({ error }) => error ? alert(error.message) : window.location.reload()) }} style={{ width: '100%' }}>
+          <form onSubmit={handleLogin} style={{ width: '100%' }}>
             <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '10px' }} />
             <input type="password" placeholder="Heslo" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputBase, width: '100%', marginBottom: '20px' }} />
             <button type="submit" style={{ width: '100%', height: '45px', background: '#38a169', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '15px' }}>VSTOUPIT</button>
-            <button type="button" onClick={() => setIsResettingPassword(true)} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zapomněli jste heslo?</button>
+            <button type="button" onClick={() => { setIsResettingPassword(true); setPassword(''); }} style={{ width: '100%', background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '12px' }}>Zapomněli jste heslo?</button>
           </form>
         )}
       </div>
     </div>
   )
 
-  // --- HLAVNÍ APLIKACE ---
+  // --- HLAVNÍ APLIKACE (Kronika, atd.) ---
   return (
     <div style={{ color: 'white', fontFamily: 'sans-serif', minHeight: '100vh', background: '#1a202c' }}>
       <nav style={{ background: '#2d3748', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
