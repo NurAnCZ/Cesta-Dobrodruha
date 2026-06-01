@@ -1,31 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyKey } from 'discord-interactions';
 
-// TOTO JE JEN PRO REGISTRACI - SPUSTÍŠ JEDNOU
-async function registerCommand() {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  const clientId = "1510695743051141332"; // Z General Information v Discord portálu
-
-  const url = `https://discord.com/api/v10/applications/${clientId}/commands`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': `Bot ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: 'kral_mluv',
-      description: 'Zpráva od Krále Želváka',
-      default_member_permissions: "8",
-      options: [{ name: 'zprava', description: 'Text', type: 3, required: true }]
-    })
-  });
-  return await response.json();
-}
-
-export async function GET(req: Request) {
-  // Až tohle nahraješ na Vercel, prostě v prohlížeči otevři: tvoje-adresa.cz/api/discord
-  const result = await registerCommand();
-  return NextResponse.json({ status: "Registrace proběhla", result });
-}
-
 export async function POST(req: Request) {
   try {
     // Získáme hlavičky a čistý text zprávy pro ověření Discord podpisu
