@@ -27,21 +27,22 @@ export async function POST(req: Request) {
 
       // Uživatel zadal příkaz /kral_mluv
      if (body.type === 2 && body.data?.name === 'kral_mluv') {
-        const textOdUzivatele = body.data.options?.[0]?.value || '';
+        let textOdUzivatele = body.data.options?.[0]?.value || '';
         
+        // Změní všechny výskyty // na skutečný nový řádek
+        textOdUzivatele = textOdUzivatele.split('//').join('\n');
+
         return NextResponse.json({
-          type: 4, // Typ 4 = Odpověď zprávou
+          type: 4,
           data: {
             embeds: [{
               title: '👑 Král Želvák promlouvá:',
-              description: textOdUzivatele, // Tady se zobrazí tvůj text
-              color: 0xf1c40f, // Žlutá barva králů
-              footer: { text: 'Zpráva z královského trůnu' }
+              description: textOdUzivatele,
+              color: 0xf1c40f
             }]
           }
         });
       }
-
     // --- 2. JE TO ZÁPIS XP Z NAŠEHO WEBU? ---
     const body = JSON.parse(rawBody);
     const { characterName, xp, loot, dm, level, oldLevel, sessionTitle, sessionDate } = body;
