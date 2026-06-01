@@ -77,15 +77,17 @@ export async function POST(req: Request) {
     }
 
     const isLevelUp = Number(level) > Number(oldLevel);
+    
     const messagePayload = {
       embeds: [{
         title: `📜 Nový záznam z výpravy: ${sessionTitle} (${formattedDate})`,
-        color: isLevelUp ? 0xe74c3c : 0x3498db,
+        color: isLevelUp ? 0xe74c3c : 0x3498db, 
         fields: [
           { name: 'Vypravěč', value: dm, inline: true },
           { name: 'Zkušenosti', value: `+${xp} XP`, inline: true },
           { name: 'Postava', value: characterName, inline: true },
           { name: isLevelUp ? '🎉 Nová úroveň!' : 'Úroveň', value: isLevelUp ? `**Lvl ${level}** (Postup!)` : `Lvl ${level}`, inline: true },
+          { name: 'Celkem XP', value: `${body.totalXp || 0} XP`, inline: true }, // NOVÝ ŘÁDEK
           ...(loot ? [{ name: 'Odměna / Kořist', value: loot }] : [])
         ]
       }]
