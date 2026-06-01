@@ -79,7 +79,7 @@ export default function Home() {
         const newTotalXp = c.total_xp + (c.xp_to_add || 0);
         const newLevel = getLvl(newTotalXp).lvl; // Nový level po přičtení
 
-        try {
+     try {
           const res = await fetch('/api/discord', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -89,10 +89,10 @@ export default function Home() {
               loot: c.loot_to_add,
               dm: profile.full_name,
               level: newLevel,
-              oldLevel: oldLevel,         // <-- NOVÉ
-              sessionTitle: sessionTitle, // <-- NOVÉ
-              sessionDate: sessionDate    // <-- NOVÉ
-              totalXp: newTotalXp
+              oldLevel: oldLevel,         
+              sessionTitle: sessionTitle, 
+              sessionDate: sessionDate,
+              totalXp: newTotalXp         // <-- TADY JE TEN NOVÝ ŘÁDEK
             })
           });
 
