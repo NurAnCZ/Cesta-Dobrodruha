@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
     if (!thread) {
       return NextResponse.json(
-        { error: `Discord vlákno nebylo nalezeno.`, success: false },
+        { error:`Vlákno pro postavu "${characterName}" nebylo nalezeno.`, success: false },
         { status: 404 }
       );
     }
