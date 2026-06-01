@@ -17,6 +17,14 @@ export async function POST(req: Request) {
       'Content-Type': 'application/json',
     };
 
+    // --- FORMÁTOVÁNÍ DATUMU ---
+    // Převede počítačové "2026-06-01" na hezké české "1.6.2026"
+    let formattedDate = sessionDate;
+    if (sessionDate && sessionDate.includes('-')) {
+      const [year, month, day] = sessionDate.split('-');
+      formattedDate = `${parseInt(day)}.${parseInt(month)}.${year}`;
+    }
+
     // 1. Zjistíme ID celého serveru (Guild ID) z našeho fóra
     const channelRes = await fetch(`https://discord.com/api/v10/channels/${forumId}`, { headers });
     if (!channelRes.ok) return NextResponse.json({ error: 'Fórum nenalezeno, zkontrolujte ID', success: false }, { status: 404 });
@@ -48,13 +56,13 @@ export async function POST(req: Request) {
     // 4. Sestavení krásné zprávy (Embed)
     const messagePayload = {
       embeds: [{
-        title: `📜 Nový záznam z výpravy: ${sessionTitle} (${sessionDate})`, // Nadpis s názvem a datem
-        color: isLevelUp ? 0xe74c3c : 0x3498db, // Pokud je Level Up, proužek bude slavnostně červeno-oranžový, jinak modrý
+        title: `📜 Nový záznam z výpravy: ${sessionTitle} (${formattedDate})`, // Nadpis s upraveným datem
+        color: isLevelUp ? 0xe74c3c : 0x3498db, 
         fields: [
           { name: 'Vypravěč', value: dm, inline: true },
           { name: 'Zkušenosti', value: `+${xp} XP`, inline: true },
           { name: 'Postava', value: characterName, inline: true },
-          { name: levelLabel, value: levelValue, inline: true }, // Naše chytré políčko úrovně
+          { name: levelLabel, value: levelValue, inline: true },
           ...(loot ? [{ name: 'Odměna / Kořist', value: loot }] : [])
         ]
       }]
