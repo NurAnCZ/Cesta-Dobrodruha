@@ -3,16 +3,13 @@ import { verifyKey } from 'discord-interactions';
 
 export async function POST(req: Request) {
   try {
-    // Získáme hlavičky a čistý text zprávy pro ověření Discord podpisu
     const signature = req.headers.get('x-signature-ed25519');
     const timestamp = req.headers.get('x-signature-timestamp');
-    const rawBody = await req.text(); 
-    
+    const rawBody = await req.text();
     const publicKey = process.env.DISCORD_PUBLIC_KEY;
 
     // --- 1. JE TO PŘÍKAZ Z DISCORDU? ---
     if (signature && timestamp && publicKey) {
-      // Šifrovací ověření
       const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
       if (!isValidRequest) {
         return new NextResponse('Neplatný podpis', { status: 401 });
@@ -20,29 +17,27 @@ export async function POST(req: Request) {
 
       const body = JSON.parse(rawBody);
 
-      // Discord zkouší Ping test
       if (body.type === 1) {
         return NextResponse.json({ type: 1 });
       }
 
-      // Uživatel zadal příkaz /kral_mluv
-    if (body.type === 2 && body.data?.name === 'kral_mluv') {
-        let textOdUzivatele = body.data.options?.[0]?.value || '';
-        
-        // TADY SE DĚJE TO KOUZLO: Všechny // se změní na nový řádek
+      if (body.type === 2 && body.data?.name === 'kral_mluv') {
+        const textOdUzivatele = body.data.options?.[0]?.value || '';
         const formatovanyText = textOdUzivatele.split('//').join('\n');
-
+        
         return NextResponse.json({
-          type: 4, 
+          type: 4,
           data: {
             embeds: [{
               title: '👑 Král Želvák promlouvá:',
-              description: formatovanyText, // Tady použijeme ten upravený text
-              color: 0xf1c40f 
+              description: formatovanyText,
+              color: 0xf1c40f
             }]
           }
         });
       }
+    }
+
     // --- 2. JE TO ZÁPIS XP Z NAŠEHO WEBU? ---
     const body = JSON.parse(rawBody);
     const { characterName, xp, loot, dm, level, oldLevel, sessionTitle, sessionDate } = body;
@@ -85,7 +80,7 @@ export async function POST(req: Request) {
     const messagePayload = {
       embeds: [{
         title: `📜 Nový záznam z výpravy: ${sessionTitle} (${formattedDate})`,
-        color: isLevelUp ? 0xe74c3c : 0x3498db, 
+        color: isLevelUp ? 0xe74c3c : 0x3498db,
         fields: [
           { name: 'Vypravěč', value: dm, inline: true },
           { name: 'Zkušenosti', value: `+${xp} XP`, inline: true },
