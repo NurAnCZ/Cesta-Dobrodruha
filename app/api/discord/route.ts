@@ -1,3 +1,32 @@
+// POMOCNÁ FUNKCE PRO REGISTRACI PŘÍKAZU - SPUSTÍ SE JEN JEDNOU
+async function registerSlashCommand(token: string) {
+  // Zde doplň ID své aplikace (najdeš v Discord Developer Portálu u bota jako Application ID)
+  const clientId = "1510695743051141332"; 
+  
+  const commandData = {
+    name: 'kral_mluv',
+    description: 'Pošle zprávu jménem Krále Želváka (pouze pro DM/Adminy)',
+    default_member_permissions: "8", // "8" je interní kód Discordu pro Administrátora. Nikdo jiný příkaz neuvidí!
+    options: [
+      {
+        name: 'zprava',
+        description: 'Text, který má Král Želvák říct',
+        type: 3, // 3 znamená TEXT
+        required: true
+      }
+    ]
+  };
+
+  await fetch(`https://discord.com/api/v10/applications/${clientId}/commands`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bot ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(commandData)
+  });
+}
+
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -6,6 +35,7 @@ export async function POST(req: Request) {
     const { characterName, xp, loot, dm, level, oldLevel, sessionTitle, sessionDate } = body;
 
     const token = process.env.DISCORD_BOT_TOKEN;
+    await registerSlashCommand(token); //Pak smazat
     const forumId = process.env.DISCORD_FORUM_CHANNEL_ID;
 
     if (!token || !forumId) {
