@@ -75,8 +75,9 @@ export default function Home() {
 
     for (const c of selectedChars) {
       if (c.xp_to_add > 0 || c.loot_to_add) {
+        const oldLevel = getLvl(c.total_xp).lvl; // Původní level před přičtením
         const newTotalXp = c.total_xp + (c.xp_to_add || 0);
-        const newLevel = getLvl(newTotalXp).lvl;
+        const newLevel = getLvl(newTotalXp).lvl; // Nový level po přičtení
 
         try {
           const res = await fetch('/api/discord', {
@@ -87,11 +88,13 @@ export default function Home() {
               xp: c.xp_to_add,
               loot: c.loot_to_add,
               dm: profile.full_name,
-              level: newLevel
+              level: newLevel,
+              oldLevel: oldLevel,         // <-- NOVÉ
+              sessionTitle: sessionTitle, // <-- NOVÉ
+              sessionDate: sessionDate    // <-- NOVÉ
             })
           });
 
-          // Ověření, že odpověď je skutečně ten náš JSON, a ne falešná HTML chyba
           const contentType = res.headers.get("content-type");
           if (!contentType || !contentType.includes("application/json")) {
             discordWarnings.push(`Spojení u ${c.name} selhalo (restartujte server)`);
