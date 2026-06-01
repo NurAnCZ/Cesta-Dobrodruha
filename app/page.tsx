@@ -63,10 +63,63 @@ export default function Home() {
   const saveSession = async () => {
     if (!sessionTitle || selectedChars.length === 0) return showToast('Doplňte název výpravy a vyberte hrdiny!', 'error');
     setIsSubmitting(true);
+    
+    // 1. Uložení do Supabase
     const { data: s, error } = await supabase.from('sessions').insert([{ title: sessionTitle, date: sessionDate, start_time: sessionTime, dm_id: user.id, pj_name: profile.full_name }]).select().single();
     if (error) { showToast("Chyba DB: " + error.message, 'error'); setIsSubmitting(false); return; }
+    
     await supabase.from('xp_logs').insert(selectedChars.map(c => ({ character_id: c.id, session_id: s.id, xp_gained: c.xp_to_add || 0, loot: c.loot_to_add || '', notes: c.notes_to_add || '', created_by: user.id })));
-    showToast('Výprava úspěšně uložena!', 'success'); setSelectedChars([]); setSessionTitle(''); fetchChars(); fetchHistory(); setIsSubmitting(false);
+    
+    // 2. Odeslání notifikací na Discord a sběr případných chyb
+    let discordWarnings: string[] = [];
+
+    for (const c of selectedChars) {
+      if (c.xp_to_add > 0 || c.loot_to_add) {
+        const newTotalXp = c.total_xp + (c.xp_to_add || 0);
+        const newLevel = getLvl(newTotalXp).lvl;
+
+        try {
+          const res = await fetch('/api/discord', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              characterName: c.name,
+              xp: c.xp_to_add,
+              loot: c.loot_to_add,
+              dm: profile.full_name,
+              level: newLevel
+            })
+          });
+
+          // Ověření, že odpověď je skutečně ten náš JSON, a ne falešná HTML chyba
+          const contentType = res.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            discordWarnings.push(`Spojení u ${c.name} selhalo (restartujte server)`);
+            continue;
+          }
+
+          const resData = await res.json();
+          if (!res.ok || !resData.success) {
+            discordWarnings.push(resData.error || `Chyba u ${c.name}`);
+          }
+        } catch (err) {
+          discordWarnings.push(`Kritická chyba u ${c.name}`);
+        }
+      }
+    }
+
+    // 3. Vyhodnocení a zobrazení správné bubliny
+    if (discordWarnings.length > 0) {
+      showToast(`Uloženo v DB! Discord ale hlásí: ${discordWarnings.join(' | ')}`, 'error');
+    } else {
+      showToast('Výprava úspěšně uložena a zapsána na Discord!', 'success'); 
+    }
+
+    setSelectedChars([]); 
+    setSessionTitle(''); 
+    fetchChars(); 
+    fetchHistory(); 
+    setIsSubmitting(false);
   }
 
   const downloadCSV = (csv: string, name: string) => { const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", name); link.click(); };
