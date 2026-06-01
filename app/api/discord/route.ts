@@ -26,19 +26,19 @@ export async function POST(req: Request) {
       }
 
       // Uživatel zadal příkaz /kral_mluv
-     if (body.type === 2 && body.data?.name === 'kral_mluv') {
+    if (body.type === 2 && body.data?.name === 'kral_mluv') {
         let textOdUzivatele = body.data.options?.[0]?.value || '';
         
-        // Změní všechny výskyty // na skutečný nový řádek
-        textOdUzivatele = textOdUzivatele.split('//').join('\n');
+        // TADY SE DĚJE TO KOUZLO: Všechny // se změní na nový řádek
+        const formatovanyText = textOdUzivatele.split('//').join('\n');
 
         return NextResponse.json({
-          type: 4,
+          type: 4, 
           data: {
             embeds: [{
               title: '👑 Král Želvák promlouvá:',
-              description: textOdUzivatele,
-              color: 0xf1c40f
+              description: formatovanyText, // Tady použijeme ten upravený text
+              color: 0xf1c40f 
             }]
           }
         });
