@@ -92,6 +92,7 @@ export default function Home() {
               oldLevel: oldLevel,         // <-- NOVÉ
               sessionTitle: sessionTitle, // <-- NOVÉ
               sessionDate: sessionDate    // <-- NOVÉ
+              totalXp: newTotalXp
             })
           });
 
