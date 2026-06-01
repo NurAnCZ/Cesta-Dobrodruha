@@ -1,72 +1,52 @@
-// POMOCNÁ FUNKCE PRO REGISTRACI PŘÍKAZU - SPUSTÍ SE JEN JEDNOU
-async function registerSlashCommand(token: string) {
-  // Zde doplň ID své aplikace (najdeš v Discord Developer Portálu u bota jako Application ID)
-  const clientId = "1510695743051141332"; 
-  
-  const commandData = {
-    name: 'kral_mluv',
-    description: 'Pošle zprávu jménem Krále Želváka (pouze pro DM/Adminy)',
-    default_member_permissions: "8", // "8" je interní kód Discordu pro Administrátora. Nikdo jiný příkaz neuvidí!
-    options: [
-      {
-        name: 'zprava',
-        description: 'Text, který má Král Želvák říct',
-        type: 3, // 3 znamená TEXT
-        required: true
-      }
-    ]
-  };
-
-  await fetch(`https://discord.com/api/v10/applications/${clientId}/commands`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bot ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(commandData)
-  });
-}
-
 import { NextResponse } from 'next/server';
+import { verifyKey } from 'discord-interactions';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // Získáme hlavičky a čistý text zprávy pro ověření Discord podpisu
+    const signature = req.headers.get('x-signature-ed25519');
+    const timestamp = req.headers.get('x-signature-timestamp');
+    const rawBody = await req.text(); 
+    
+    const publicKey = process.env.DISCORD_PUBLIC_KEY;
 
-    // --- CHYTRÉ ROZPOZNÁNÍ: JDE O PŘÍKAZ Z DISCORDU? ---
-    if (body.type !== undefined) {
-      // 1. Discord posílá PING na ověření spojení
+    // --- 1. JE TO PŘÍKAZ Z DISCORDU? ---
+    if (signature && timestamp && publicKey) {
+      // Šifrovací ověření
+      const isValidRequest = verifyKey(rawBody, signature, timestamp, publicKey);
+      if (!isValidRequest) {
+        return new NextResponse('Neplatný podpis', { status: 401 });
+      }
+
+      const body = JSON.parse(rawBody);
+
+      // Discord zkouší Ping test
       if (body.type === 1) {
         return NextResponse.json({ type: 1 });
       }
 
-      // 2. Uživatel použil náš Slash příkaz /kral_mluv
+      // Uživatel zadal příkaz /kral_mluv
       if (body.type === 2 && body.data?.name === 'kral_mluv') {
         const textOdUzivatele = body.data.options?.[0]?.value || '';
-
-        // Odpovíme Discordu, že zprávu úspěšně posíláme dál
         return NextResponse.json({
-          type: 4, // Typ 4 = Odpověď zprávou
-          data: {
-            content: textOdUzivatele // Bot prostě zopakuje text uživatele, ale pod svým jménem a avatarem Krále Želváka!
-          }
+          type: 4, // Odpovědět zprávou do chatu
+          data: { content: textOdUzivatele }
         });
       }
     }
 
-    // --- KLASICKÝ KÓD PRO ODESÍLÁNÍ XP Z WEBU ---
+    // --- 2. JE TO ZÁPIS XP Z NAŠEHO WEBU? ---
+    const body = JSON.parse(rawBody);
     const { characterName, xp, loot, dm, level, oldLevel, sessionTitle, sessionDate } = body;
+
     const token = process.env.DISCORD_BOT_TOKEN;
     const forumId = process.env.DISCORD_FORUM_CHANNEL_ID;
 
     if (!token || !forumId) {
-      return NextResponse.json({ error: 'Chybí Discord token nebo ID kanálu', success: false }, { status: 500 });
+      return NextResponse.json({ error: 'Chybí Discord token', success: false }, { status: 500 });
     }
 
-    const headers = {
-      'Authorization': `Bot ${token}`,
-      'Content-Type': 'application/json',
-    };
+    const headers = { 'Authorization': `Bot ${token}`, 'Content-Type': 'application/json' };
 
     let formattedDate = sessionDate;
     if (sessionDate && sessionDate.includes('-')) {
@@ -90,13 +70,10 @@ export async function POST(req: Request) {
     }
 
     if (!thread) {
-      return NextResponse.json({ error: `Vlákno pro postavu "${characterName}" nebylo nalezeno.`, success: false }, { status: 404 });
+      return NextResponse.json({ error: `Vlákno pro "${characterName}" nenalezeno.`, success: false }, { status: 404 });
     }
 
     const isLevelUp = Number(level) > Number(oldLevel);
-    const levelLabel = isLevelUp ? '🎉 Nová úroveň!' : 'Úroveň';
-    const levelValue = isLevelUp ? `**Lvl ${level}** (Postup!)` : `Lvl ${level}`;
-
     const messagePayload = {
       embeds: [{
         title: `📜 Nový záznam z výpravy: ${sessionTitle} (${formattedDate})`,
@@ -105,20 +82,17 @@ export async function POST(req: Request) {
           { name: 'Vypravěč', value: dm, inline: true },
           { name: 'Zkušenosti', value: `+${xp} XP`, inline: true },
           { name: 'Postava', value: characterName, inline: true },
-          { name: levelLabel, value: levelValue, inline: true },
+          { name: isLevelUp ? '🎉 Nová úroveň!' : 'Úroveň', value: isLevelUp ? `**Lvl ${level}** (Postup!)` : `Lvl ${level}`, inline: true },
           ...(loot ? [{ name: 'Odměna / Kořist', value: loot }] : [])
         ]
       }]
     };
 
     const msgRes = await fetch(`https://discord.com/api/v10/channels/${thread.id}/messages`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(messagePayload)
+      method: 'POST', headers, body: JSON.stringify(messagePayload)
     });
 
-    if (!msgRes.ok) throw new Error('Nepodařilo se odeslat zprávu do Discordu');
-
+    if (!msgRes.ok) throw new Error('Nepodařilo se odeslat na Discord');
     return NextResponse.json({ success: true });
 
   } catch (error) {
