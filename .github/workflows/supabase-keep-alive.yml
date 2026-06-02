@@ -12,7 +12,7 @@ jobs:
       - name: Ping Supabase REST API
         env:
           SUPABASE_URL: https://zjemwmsjufyshvllpegy.supabase.co
-          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqZW13bXNqdWZ5c2h2bGxwZWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjQxMywiZXhwIjoyMDk0MzcyNDEzfQ.0C0pKVTBh9M5h4AM9-VDyh6zEqxzhCuq4lsHA_yRqVg
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqZW13bXNqdWZ5c2h2bGxwZWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTY0MTMsImV4cCI6MjA5NDM3MjQxM30.0C0pKVTBh9M5h4AM9-VDyh6zEqxzhCuq4lsHA_yRqVg
         run: |
           set -e
           echo "Pinging Supabase at $(date -u)"
