@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    - cron: '0 9 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: https://zjemwmsjufyshvllpegy.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqZW13bXNqdWZ5c2h2bGxwZWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjQxMywiZXhwIjoyMDk0MzcyNDEzfQ.0C0pKVTBh9M5h4AM9-VDyh6zEqxzhCuq4lsHA_yRqVg
+        run: |
+          set -e
+          echo "Pinging Supabase at $(date -u)"
+          HTTP_CODE=$(curl -s -o /tmp/body -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1")
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/body || true
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "Keep-alive ping selhal."
+            exit 1
+          fi
+          echo "OK — projekt zůstává aktivní."
